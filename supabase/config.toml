@@ -1,0 +1,13 @@
+# Supabase Configuration
+# Copied from existing supabase folder structure
+
+project_id = "grcaerqofsunvwzlpuoz"
+
+[functions.create-initial-users]
+verify_jwt = false
+
+[functions.manage-students]
+verify_jwt = true
+
+[functions.send-internship-notification]
+verify_jwt = true
