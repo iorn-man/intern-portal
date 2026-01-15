@@ -37,7 +37,7 @@ const Internships = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInternship, setEditingInternship] = useState<Internship | null>(null);
-  
+
   const [formData, setFormData] = useState({
     company_name: "",
     domain: "",
@@ -111,9 +111,9 @@ const Internships = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.company_name || !formData.domain || 
-        !formData.duration || !formData.department_id || !formData.internship_link) {
+
+    if (!formData.company_name || !formData.domain ||
+      !formData.duration || !formData.department_id || !formData.internship_link) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
@@ -166,13 +166,13 @@ const Internships = () => {
           .single();
 
         if (error) throw error;
-        
+
         // Send email notifications to department students
         try {
           const { error: emailError } = await supabase.functions.invoke('send-internship-notification', {
             body: {
-              internshipId: newInternship.id,
-              departmentId: formData.department_id,
+              internship_id: newInternship.id,
+              department_id: formData.department_id,
             },
           });
 
@@ -184,16 +184,16 @@ const Internships = () => {
               variant: "destructive",
             });
           } else {
-            toast({ 
-              title: "Success", 
-              description: "Internship posted and email notifications sent to students" 
+            toast({
+              title: "Success",
+              description: "Internship posted and email notifications sent to students"
             });
           }
         } catch (emailErr) {
           console.error('Error invoking email function:', emailErr);
-          toast({ 
-            title: "Success", 
-            description: "Internship posted successfully (email notifications pending)" 
+          toast({
+            title: "Success",
+            description: "Internship posted successfully (email notifications pending)"
           });
         }
       }
@@ -237,18 +237,38 @@ const Internships = () => {
     if (!confirm("Are you sure you want to delete this internship?")) return;
 
     try {
-      const { error } = await supabase
+      // First, delete related applications
+      await supabase
+        .from("applications")
+        .delete()
+        .eq("internship_id", id);
+
+      // Then delete the internship
+      const { data, error } = await supabase
         .from("internships")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select();
 
       if (error) throw error;
+
+      // Check if any row was actually deleted
+      if (!data || data.length === 0) {
+        toast({
+          title: "Error",
+          description: "Could not delete internship. You may not have permission.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({ title: "Success", description: "Internship deleted successfully" });
       fetchInternships();
     } catch (error: any) {
+      console.error("Delete error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete internship",
         variant: "destructive",
       });
     }
@@ -261,8 +281,8 @@ const Internships = () => {
     internship.departments?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isFormValid = formData.company_name && formData.domain && 
-                      formData.duration && formData.department_id && formData.internship_link;
+  const isFormValid = formData.company_name && formData.domain &&
+    formData.duration && formData.department_id && formData.internship_link;
 
   return (
     <DashboardLayout>
@@ -277,169 +297,169 @@ const Internships = () => {
           Back
         </Button>
         <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Internships</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setEditingInternship(null);
-              setFormData({
-                company_name: "",
-                domain: "",
-                title: "",
-                duration: "",
-                department_id: "",
-                internship_link: "",
-                description: "",
-              });
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Post Internship
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingInternship ? "Edit" : "Post"} Internship</DialogTitle>
-              <DialogDescription>Fill in the internship details</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="company_name">Company Name *</Label>
-                <Input
-                  id="company_name"
-                  value={formData.company_name}
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="domain">Domain *</Label>
-                <Input
-                  id="domain"
-                  value={formData.domain}
-                  onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="title">Role</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="duration">Duration *</Label>
-                <Input
-                  id="duration"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="e.g., 3 months"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="department_id">Department *</Label>
-                <Select
-                  value={formData.department_id}
-                  onValueChange={(value) => setFormData({ ...formData, department_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="internship_link">Internship Link *</Label>
-                <Input
-                  id="internship_link"
-                  type="url"
-                  value={formData.internship_link}
-                  onChange={(e) => setFormData({ ...formData, internship_link: e.target.value })}
-                  placeholder="https://example.com/apply"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <Button type="submit" disabled={!isFormValid} className="w-full">
-                {editingInternship ? "Update" : "Upload"} Internship
+          <h1 className="text-3xl font-bold">Internships</h1>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setEditingInternship(null);
+                setFormData({
+                  company_name: "",
+                  domain: "",
+                  title: "",
+                  duration: "",
+                  department_id: "",
+                  internship_link: "",
+                  description: "",
+                });
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Post Internship
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          placeholder="Search by company, domain, role, or department..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {loading ? (
-        <div className="text-center py-8">Loading...</div>
-      ) : filteredInternships.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          No internships found
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingInternship ? "Edit" : "Post"} Internship</DialogTitle>
+                <DialogDescription>Fill in the internship details</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="company_name">Company Name *</Label>
+                  <Input
+                    id="company_name"
+                    value={formData.company_name}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="domain">Domain *</Label>
+                  <Input
+                    id="domain"
+                    value={formData.domain}
+                    onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="title">Role</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="duration">Duration *</Label>
+                  <Input
+                    id="duration"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    placeholder="e.g., 3 months"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="department_id">Department *</Label>
+                  <Select
+                    value={formData.department_id}
+                    onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="internship_link">Internship Link *</Label>
+                  <Input
+                    id="internship_link"
+                    type="url"
+                    value={formData.internship_link}
+                    onChange={(e) => setFormData({ ...formData, internship_link: e.target.value })}
+                    placeholder="https://example.com/apply"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <Button type="submit" disabled={!isFormValid} className="w-full">
+                  {editingInternship ? "Update" : "Upload"} Internship
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredInternships.map((internship) => (
-            <Card key={internship.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{internship.company_name}</span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(internship)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(internship.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardTitle>
-                <CardDescription>{internship.title}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm"><strong>Domain:</strong> {internship.domain}</p>
-                <p className="text-sm"><strong>Duration:</strong> {internship.duration}</p>
-                <p className="text-sm"><strong>Department:</strong> {internship.departments?.name}</p>
-                <p className="text-sm">
-                  <strong>Status:</strong>{" "}
-                  <span className={internship.is_active ? "text-green-600" : "text-red-600"}>
-                    {internship.is_active ? "Active" : "Inactive"}
-                  </span>
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search by company, domain, role, or department..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      )}
+
+        {loading ? (
+          <div className="text-center py-8">Loading...</div>
+        ) : filteredInternships.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No internships found
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredInternships.map((internship) => (
+              <Card key={internship.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>{internship.company_name}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(internship)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(internship.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardTitle>
+                  <CardDescription>{internship.title}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm"><strong>Domain:</strong> {internship.domain}</p>
+                  <p className="text-sm"><strong>Duration:</strong> {internship.duration}</p>
+                  <p className="text-sm"><strong>Department:</strong> {internship.departments?.name}</p>
+                  <p className="text-sm">
+                    <strong>Status:</strong>{" "}
+                    <span className={internship.is_active ? "text-green-600" : "text-red-600"}>
+                      {internship.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
