@@ -23,18 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
+# Environment files
 .env
 .env.local
 .env.production
-.env.*.local
-
-# Supabase
-.supabase
-
-# Vercel
-.vercel
-
-# Build artifacts
-.cache
-.turbo

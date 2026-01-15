@@ -119,7 +119,7 @@ const CertificateCentre = () => {
       const deptCounts = deptResult.data.map(dept => {
         const deptStudentIds = studentsResult.data?.filter(s => s.department_id === dept.id).map(s => s.id) || [];
         const count = certsResult.data?.filter(cert => deptStudentIds.includes(cert.student_id)).length || 0;
-        
+
         return {
           id: dept.id,
           name: dept.name,
@@ -197,23 +197,39 @@ const CertificateCentre = () => {
     }
   };
 
-  const downloadCertificate = async (url: string, filename: string) => {
+  const downloadCertificate = async (path: string, filename: string) => {
     try {
+      let url = path;
+      // Create signed URL if path is not already a full URL
+      if (!path.startsWith('http')) {
+        const { data, error } = await supabase.storage
+          .from('certificates')
+          .createSignedUrl(path, 60 * 60); // 1 hour expiry
+        if (error || !data?.signedUrl) {
+          throw new Error('Failed to create signed URL');
+        }
+        url = data.signedUrl;
+      }
+
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch certificate (${response.status})`);
+      }
       const blob = await response.blob();
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = filename;
       link.click();
-      
+
       toast({
         title: "Success",
         description: "Certificate downloaded",
       });
     } catch (error: any) {
+      console.error("Download error:", error);
       toast({
         title: "Error",
-        description: "Failed to download certificate",
+        description: error.message || "Failed to download certificate",
         variant: "destructive",
       });
     }
@@ -222,29 +238,48 @@ const CertificateCentre = () => {
   const downloadAllCertificates = async (companyName: string, certs: Certificate[]) => {
     try {
       const zip = new JSZip();
-      
+
       for (let i = 0; i < certs.length; i++) {
         const cert = certs[i];
-        const response = await fetch(cert.certificate_url);
+        let url = cert.certificate_url;
+
+        // Create signed URL if path is not already a full URL
+        if (!url.startsWith('http')) {
+          const { data, error } = await supabase.storage
+            .from('certificates')
+            .createSignedUrl(url, 60 * 60);
+          if (error || !data?.signedUrl) {
+            console.error(`Failed to get signed URL for certificate ${i + 1}`);
+            continue;
+          }
+          url = data.signedUrl;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error(`Failed to fetch certificate ${i + 1}`);
+          continue;
+        }
         const blob = await response.blob();
         const ext = cert.certificate_url.split('.').pop() || 'pdf';
         zip.file(`${cert.profiles?.full_name || 'certificate'}_${i + 1}.${ext}`, blob);
       }
-      
+
       const content = await zip.generateAsync({ type: "blob" });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = `${companyName}_certificates.zip`;
       link.click();
-      
+
       toast({
         title: "Success",
         description: "All certificates downloaded",
       });
     } catch (error: any) {
+      console.error("Download all error:", error);
       toast({
         title: "Error",
-        description: "Failed to download certificates",
+        description: error.message || "Failed to download certificates",
         variant: "destructive",
       });
     }

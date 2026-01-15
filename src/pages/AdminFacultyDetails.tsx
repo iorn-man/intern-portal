@@ -106,27 +106,18 @@ const AdminFacultyDetails = () => {
     }
 
     try {
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-            role: 'faculty',
-          },
+      const { data, error } = await supabase.functions.invoke("manage-faculty", {
+        body: {
+          action: "create_faculty",
+          name: formData.full_name,
+          email: formData.email,
+          password: formData.password,
+          department_id: formData.department_id,
         },
       });
 
-      if (signUpError) throw signUpError;
-
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ department_id: formData.department_id })
-          .eq("id", authData.user.id);
-
-        if (profileError) throw profileError;
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({ title: "Success", description: "Faculty member added successfully" });
       setIsDialogOpen(false);
@@ -237,7 +228,7 @@ const AdminFacultyDetails = () => {
         }
       }
 
-      const description = successCount > 0 
+      const description = successCount > 0
         ? `Successfully added ${successCount} faculty member(s). ${errorCount > 0 ? `${errorCount} error(s).` : ''}`
         : 'Failed to add any faculty members.';
 
@@ -291,9 +282,15 @@ const AdminFacultyDetails = () => {
     if (!selectedFaculty) return;
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(selectedFaculty.id);
+      const { data, error } = await supabase.functions.invoke("manage-faculty", {
+        body: {
+          action: "delete_user",
+          user_id: selectedFaculty.id,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({ title: "Success", description: "Faculty member deleted successfully" });
       setIsDeleteDialogOpen(false);
@@ -341,11 +338,16 @@ const AdminFacultyDetails = () => {
     }
 
     try {
-      const { error } = await supabase.auth.admin.updateUserById(selectedFaculty.id, {
-        password: newPassword,
+      const { data, error } = await supabase.functions.invoke("manage-faculty", {
+        body: {
+          action: "reset_password",
+          user_id: selectedFaculty.id,
+          new_password: newPassword,
+        },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Success",
@@ -365,18 +367,18 @@ const AdminFacultyDetails = () => {
 
   const downloadTemplate = () => {
     const template = [
-      { 
-        full_name: "John Doe", 
-        email: "john.doe@example.com", 
-        password: "Password123!", 
-        department: "Computer Science" 
+      {
+        full_name: "John Doe",
+        email: "john.doe@example.com",
+        password: "Password123!",
+        department: "Computer Science"
       }
     ];
     const worksheet = XLSX.utils.json_to_sheet(template);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Faculty Template");
     XLSX.writeFile(workbook, "faculty_template.xlsx");
-    
+
     toast({
       title: "Template Downloaded",
       description: "Please fill in the template with faculty details and upload it back.",
@@ -443,12 +445,12 @@ const AdminFacultyDetails = () => {
                       <Upload className="mr-2 h-4 w-4" />
                       Upload
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setIsBulkUploadOpen(false);
                         setUploadFile(null);
-                      }} 
+                      }}
                       className="flex-1"
                     >
                       Cancel
