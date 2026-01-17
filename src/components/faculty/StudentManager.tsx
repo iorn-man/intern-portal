@@ -21,6 +21,8 @@ interface StudentRow {
   full_name: string;
   email: string;
   batch: string | null;
+  bio: string | null;
+  skills: string[] | null;
 }
 
 const studentSchema = z.object({
@@ -77,7 +79,7 @@ export default function StudentManager({ profile }: { profile: FacultyProfile })
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("profiles")
-      .select("id, full_name, email, batch")
+      .select("id, full_name, email, batch, bio, skills")
       .eq("role", "student")
       .eq("department_id", departmentFixed)
       .order("full_name");
@@ -281,6 +283,8 @@ export default function StudentManager({ profile }: { profile: FacultyProfile })
               <TableHead>Name</TableHead>
               <TableHead>Batch</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Bio</TableHead>
+              <TableHead>Skills</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -290,6 +294,8 @@ export default function StudentManager({ profile }: { profile: FacultyProfile })
                 <TableCell>{s.full_name}</TableCell>
                 <TableCell>{s.batch || "-"}</TableCell>
                 <TableCell>{s.email}</TableCell>
+                <TableCell className="max-w-xs truncate">{s.bio || "-"}</TableCell>
+                <TableCell className="max-w-xs truncate">{s.skills?.join(", ") || "-"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
@@ -307,14 +313,14 @@ export default function StudentManager({ profile }: { profile: FacultyProfile })
             ))}
             {filteredStudents.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   {searchQuery ? "No students found matching your search" : "No students yet"}
                 </TableCell>
               </TableRow>
             )}
             {loading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>

@@ -127,7 +127,7 @@ const StudentDashboard = ({ profile }: { profile: Profile }) => {
         >
           <CardHeader>
             <CardTitle className="text-info-blue-foreground">Personal Details</CardTitle>
-            <CardDescription className="text-info-blue-foreground/70">Edit your profile and resume</CardDescription>
+            <CardDescription className="text-info-blue-foreground/70">Edit your profile</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-info-blue-foreground/70">Click to edit</p>

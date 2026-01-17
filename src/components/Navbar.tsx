@@ -58,11 +58,13 @@ const Navbar = ({ showHomeButton = false, showAuthButtons = true }: NavbarProps)
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">IA</span>
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="St.Peter's College Logo" 
+            className="h-8 w-8 object-contain"
+          />
           <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Insta-Apply
+            St.Peter's College of Engineering and Technology
           </h1>
         </div>
 
